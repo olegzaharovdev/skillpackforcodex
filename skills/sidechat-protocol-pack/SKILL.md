@@ -11,13 +11,21 @@ metadata:
 
 Use this skill to preserve a side conversation as files, not as a long chat response. The default output language is Russian.
 
-Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `обнови протоколы`, `освежи контекст по протоколам`, `собери решения из протоколов`, `настрой протоколы`, `настройки протоколов`, `покажи настройки протоколов`, `измени папку протоколов`, `измени папку export`, `измени vault Obsidian`, `связи протоколов`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
+Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `обнови протоколы`, `освежи контекст по протоколам`, `собери решения из протоколов`, `настрой протоколы`, `настройки протоколов`, `покажи настройки протоколов`, `измени папку протоколов`, `измени папку export`, `измени vault Obsidian`, `связи протоколов`, `включи автопротокол`, `выключи автопротокол`, `автопротокол`, `checkpoint протокола`, `фоновый лог протокола`, `черный ящик sidechat`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
 
 ## Core Rule
 
 Do not print the full protocol into chat. Create or update files, then answer only with a short summary and the protocol folder path.
 
 If file creation is not possible, say briefly that a proper protocol requires files and ask for permission or a different target folder.
+
+When a side chat contains meaningful decisions, tasks, prompts, architecture, bug analysis, or research and the user has not yet asked for a protocol, proactively suggest saving it:
+
+```text
+Похоже, это стоит запротоколировать. Сохранить sidechat export? Если не сохранить, вся переписка в этом боковом чате может быть потеряна после закрытия вкладки.
+```
+
+Use this warning sparingly: only when the conversation has real preservation value or the user appears to be wrapping up a side chat. Do not repeat it after every message.
 
 ## Explicit Target Folder
 
@@ -65,7 +73,10 @@ Config shape:
   "obsidian_enabled": false,
   "obsidian_dialog_root": "",
   "obsidian_project_name": "",
-  "obsidian_note_visibility": "show_path"
+  "obsidian_note_visibility": "show_path",
+  "auto_checkpoint_enabled": false,
+  "background_event_log_enabled": false,
+  "background_event_log_root": "D:\\\\.CodexProtocolsDontMove\\\\events"
 }
 ```
 
@@ -388,6 +399,74 @@ Procedure:
 8. Return a compact main-thread refresh summary and include paths to the source protocol folders.
 
 This mode should not create a new protocol unless the user also asks to save the refresh result.
+
+## Auto Checkpoint and Background Event Log
+
+Important limitation: a Codex skill is not a daemon and does not run by itself in the background. `SKILL.md` instructions are applied when Codex chooses or is asked to use the skill. Therefore this skill cannot guarantee automatic JSON/JSONL logging after every user message if no hook, watcher, automation, or external service is installed.
+
+Use this distinction:
+
+- Skill protocol: thoughtful Markdown protocol, handoff, normalized JSON, timeline JSONL, registry, Obsidian note.
+- Auto checkpoint: an instruction for the current Codex conversation to periodically save deltas when the user explicitly enables it.
+- Background event log: a future/external hook or watcher that records raw event JSONL independently from a manual `протокол` command.
+
+Trigger phrases:
+
+- `включи автопротокол`
+- `выключи автопротокол`
+- `автопротокол`
+- `checkpoint протокола`
+- `фоновый лог протокола`
+- `черный ящик sidechat`
+
+Recommended behavior for `включи автопротокол`:
+
+1. Explain that true background logging requires a hook/watcher and is not guaranteed by the skill alone.
+2. Set or propose `auto_checkpoint_enabled=true` in `.codex/sidechat-protocol-pack.json` for the current project if the user wants this behavior.
+3. During the current conversation, create checkpoint addenda at meaningful milestones or when decisions/tasks change.
+4. Keep checkpoint responses short and do not dump full protocol content into chat.
+5. If a meaningful checkpoint is due but no files have been saved yet, use the standard warning-prompt:
+
+```text
+Похоже, это стоит запротоколировать. Сохранить sidechat export? Если не сохранить, вся переписка в этом боковом чате может быть потеряна после закрытия вкладки.
+```
+
+Recommended behavior for background event logging:
+
+1. If `background_event_log_enabled=false`, describe it as planned/inactive and do not pretend it is running.
+2. If a real hook/watcher exists and is configured, write raw JSONL events under:
+
+```text
+<background_event_log_root>/YYYY/MM/DD/<project_slug>/<session_or_thread_id>.jsonl
+```
+
+3. Background JSONL should be a safety net, not a polished protocol. It may contain raw user/assistant message summaries, timestamps, source ids, current project, parent thread id, source thread id, and links to later protocol packs.
+4. Do not write routine status chatter. Preserve meaningful conversation events, decisions, tasks, links, files, errors, constraints, and limitations.
+5. Later, when the user runs `протокол`, convert relevant background events into the clean Markdown protocol, normalized JSON, timeline JSONL, registry entry, and optional Obsidian note.
+
+Recommended config fields:
+
+```json
+{
+  "auto_checkpoint_enabled": false,
+  "background_event_log_enabled": false,
+  "background_event_log_root": "D:\\\\.CodexProtocolsDontMove\\\\events"
+}
+```
+
+Recommended final response when enabling auto checkpoints:
+
+```text
+Автопротокол включен для текущего проекта на уровне правил сессии.
+Важно: настоящий фоновый лог требует отдельного hook/watcher; сейчас skill будет делать checkpoint/delta только когда Codex активен в этой беседе.
+```
+
+Recommended final response when the user asks whether everything is already saved:
+
+```text
+Не гарантирую полную фоновую запись без hook/watcher.
+Сейчас могу создать checkpoint протокола из доступного контекста.
+```
 
 ## Settings Management Workflow
 

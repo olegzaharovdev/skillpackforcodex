@@ -21,18 +21,48 @@ If file creation is not possible, say briefly that a proper protocol requires fi
 
 ## Folder Layout
 
-Default universal path inside the current workspace:
+Use per-project storage. Never send protocols from an unrelated workspace into an AiDrevo/Viktor2.0 folder unless the current project explicitly configured that path.
+
+Project config file:
+
+```text
+.codex/sidechat-protocol-pack.json
+```
+
+Config shape:
+
+```json
+{
+  "protocol_root": ".protocols/sidechats"
+}
+```
+
+Resolution order:
+
+1. If the user gives a target folder in the request, use it for this run and offer to save it into project config.
+2. If `.codex/sidechat-protocol-pack.json` exists in the current workspace, use `protocol_root` from it.
+3. If no config exists, ask once where to save protocols for this project.
+4. Recommended default for new projects:
 
 ```text
 .protocols/sidechats/YYYY/YYYY-MM/YYYY-MM-DD_<short_slug>/
 ```
 
-If the current project has an explicit protocol root, use that project root instead. For example, an AiDrevo/Viktor2.0 installation may use:
+5. If the user chooses a custom project path, save it to `.codex/sidechat-protocol-pack.json` so the next run in this project does not ask again.
+
+Examples of valid `protocol_root` values:
 
 ```text
-AiDrevo_OS/01_Protocols/SideChats/YYYY/YYYY-MM/YYYY-MM-DD_<short_slug>/
+.protocols/sidechats
+AiDrevo_OS/01_Protocols/SideChats
+_docs/protocols/sidechats
 ```
 
+The full protocol folder is always:
+
+```text
+<protocol_root>/YYYY/YYYY-MM/YYYY-MM-DD_<short_slug>/
+```
 Create these files for a first protocol:
 
 ```text
@@ -131,4 +161,5 @@ After creating or updating files, respond briefly:
 ```
 
 For clickable paths in Codex UI, prefer giving the folder as plain text plus filenames separately; long Cyrillic Windows paths render poorly as cards.
+
 

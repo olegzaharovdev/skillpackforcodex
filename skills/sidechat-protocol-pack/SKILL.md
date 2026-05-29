@@ -1,6 +1,6 @@
 ---
 name: sidechat-protocol-pack
-description: Create or update a durable Russian-language Sidechat Protocol Pack when the user asks to close, preserve, protocol, hand off, recover, summarize, or continue a side conversation. Also use this skill when the user asks to save a protocol into an explicit folder path, for example "сохрани протокол в D:\\..." or "протокол D:\\...". Trigger on short Russian commands like "Сделай протокол", "запротоколлируй", or "протокол". Use for side chats, interrupted chats, architectural decisions, bot/runtime bug discussions, and requests to save a transcript, protocol, handoff, question map, decisions, tasks, addendum, or reusable continuation prompt without dumping the full protocol into chat.
+description: Create or update a durable Russian-language Sidechat Protocol Pack and optional machine export when the user asks to close, preserve, protocol, hand off, recover, summarize, export, index, or continue a side conversation. Also use this skill when the user asks to save a protocol into an explicit folder path, for example "сохрани протокол в D:\\..." or "протокол D:\\...". Trigger on short Russian commands like "Сделай протокол", "запротоколлируй", or "протокол". Use for side chats, interrupted chats, architectural decisions, bot/runtime bug discussions, research sprints, Obsidian dialogue indexes, JSON/JSONL sidechat exports, and requests to save a transcript, protocol, handoff, question map, decisions, tasks, addendum, or reusable continuation prompt without dumping the full protocol into chat.
 metadata:
   short-description: File-backed sidechat protocol and handoff
 ---
@@ -11,7 +11,7 @@ metadata:
 
 Use this skill to preserve a side conversation as files, not as a long chat response. The default output language is Russian.
 
-Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
+Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
 
 ## Core Rule
 
@@ -59,7 +59,11 @@ Config shape:
 
 ```json
 {
-  "protocol_root": ".protocols/sidechats"
+  "protocol_root": ".protocols/sidechats",
+  "machine_export_enabled": true,
+  "machine_export_root": "D:\\\\.CodexProtocolsDontMove",
+  "obsidian_enabled": false,
+  "obsidian_dialog_root": ""
 }
 ```
 
@@ -89,7 +93,8 @@ The full protocol folder is always:
 ```text
 <protocol_root>/YYYY/YYYY-MM/YYYY-MM-DD_<short_slug>/
 ```
-Create these files for a first protocol:
+
+Create these files for a first Markdown protocol:
 
 ```text
 00_INDEX.md
@@ -103,6 +108,182 @@ Create these files for a first protocol:
 
 Use Russian headings and Russian prose. Keep technical identifiers, paths, IDs, command names, URLs, and error text unchanged.
 
+## Sidechat Export Mode
+
+Sidechat Export is the machine-readable companion to the Markdown protocol. It is not an official Codex thread import format.
+
+Use Sidechat Export by default when the side conversation contains decisions, tasks, architecture, bug analysis, research, handoff value, or the user asks to preserve/export/recover the side chat. For tiny operational notes, Markdown-only is acceptable if the user explicitly asks for a lightweight protocol.
+
+Machine export root:
+
+```text
+<machine_export_root>/exports/YYYY/MM/DD/<protocol_id>/
+```
+
+Recommended default:
+
+```text
+D:\.CodexProtocolsDontMove
+```
+
+Machine export files:
+
+```text
+manifest.json
+normalized.json
+timeline.jsonl
+```
+
+Registry files:
+
+```text
+<machine_export_root>/registry/sidechat_protocol_registry.jsonl
+<machine_export_root>/registry/sidechat_protocol_registry_index.json
+```
+
+Do not store machine JSON/JSONL inside Obsidian by default. Obsidian should receive a compact index note, not raw automation files.
+
+### NORMALIZED JSON
+
+`normalized.json` is a structured snapshot for Project OS, the main thread, another model, future Event Ledger/PostgreSQL/RAG, and audits.
+
+Required top-level fields:
+
+```json
+{
+  "schema": "sidechat_protocol.normalized.v0.2",
+  "protocol_id": "",
+  "created_at": "",
+  "language": "ru",
+  "status": "normalized_export_not_official_codex_import",
+  "topic": "",
+  "project": "",
+  "workspace": "",
+  "privacy_scope": "",
+  "parent_thread_id": "",
+  "source_thread_id": "",
+  "human_protocol_folder": "",
+  "machine_export_folder": "",
+  "summary": {},
+  "decisions": [],
+  "tasks": [],
+  "links": [],
+  "created_files": [],
+  "limitations": []
+}
+```
+
+### TIMELINE JSONL
+
+`timeline.jsonl` is an append-friendly event stream. One line is one valid JSON object.
+
+Recommended event types:
+
+```text
+session_meta
+limitation
+user_message
+assistant_message
+user_request
+assistant_response
+decision
+task
+file_created
+file_updated
+link
+telegram_post
+error
+constraint
+recommended_next_step
+```
+
+Every event should include `type`. Add `created_at`, `summary`, `path`, `url`, `id`, or `status` when relevant.
+
+### Manifest
+
+`manifest.json` connects the human protocol, machine export, registry entry, project, workspace, source thread, parent thread, and validation result.
+
+Required fields:
+
+```json
+{
+  "schema": "sidechat_protocol.manifest.v0.2",
+  "protocol_id": "",
+  "human_protocol_folder": "",
+  "machine_export_folder": "",
+  "normalized_json": "",
+  "timeline_jsonl": "",
+  "project": "",
+  "workspace": "",
+  "source_thread_id": "",
+  "parent_thread_id": "",
+  "not_official_codex_thread": true,
+  "validation": {}
+}
+```
+
+### Required Limitation Text
+
+Every Markdown protocol, normalized JSON, manifest, and relevant registry entry must include this meaning:
+
+```text
+Это не официальный импортируемый Codex thread. Это переносимый экспорт боковой беседы для Project OS, основной ветки, другой модели и будущего Event Ledger/PostgreSQL/RAG.
+```
+
+## Obsidian Index Mode
+
+Obsidian index is optional and per-project. Ask the user once whether they use Obsidian and want a dialogue/protocol index note there. Save the answer in `.codex/sidechat-protocol-pack.json`.
+
+Use Obsidian only for compact human navigation:
+
+- topic;
+- date;
+- participants;
+- linked protocol pack;
+- linked machine export;
+- summary;
+- decisions;
+- tasks;
+- what to read next.
+
+Do not put full raw transcript or bulky JSON/JSONL into Obsidian by default.
+
+Recommended Obsidian note path:
+
+```text
+<obsidian_dialog_root>/<topic_folder>/YYYY-MM-DD - <title>.md
+```
+
+Follow this frontmatter pattern:
+
+```yaml
+---
+тип: диалог
+дата: YYYY-MM-DD
+тема: ...
+участники: [Oleg, Codex]
+связано:
+  - "[[...]]"
+теги: [тип/диалог, тип/протокол, система/codex, статус/черновик]
+protocol_id: ...
+human_protocol_folder: ...
+machine_export_folder: ...
+---
+```
+
+Body sections:
+
+```text
+# YYYY-MM-DD - <title>
+
+## Резюме
+## Контекст разговора
+## Ключевые решения
+## Задачи
+## Ссылки на протоколы и export
+## Что дальше
+```
+
 ## First Protocol Workflow
 
 1. Identify the conversation boundary and source material available in context.
@@ -112,7 +293,9 @@ Use Russian headings and Russian prose. Keep technical identifiers, paths, IDs, 
 5. Build `04_QUESTION_MAP.md`: discussed questions, open questions, questions that became tasks, questions for the main thread.
 6. Build `05_DECISIONS_AND_TASKS.md`: decisions, statuses, tasks, risks, contradictions, confirmations needed.
 7. Build `06_ARTICLE_MATERIALS.md` only when useful; otherwise keep it compact.
-8. Update `00_INDEX.md` with status, language, version, created files, and what to pass to the main thread.
+8. Update `00_INDEX.md` with status, language, version, created files, export files, Obsidian note if any, and what to pass to the main thread.
+9. If Sidechat Export applies, create `manifest.json`, `normalized.json`, and `timeline.jsonl` under `machine_export_root`, then append a row to `sidechat_protocol_registry.jsonl`.
+10. If Obsidian index is enabled, create or update the compact Obsidian note.
 
 ## Repeat Protocol Workflow
 
@@ -134,6 +317,8 @@ The repeat update should:
 - update `00_INDEX.md` with current version, latest addendum, active decisions, and superseded decisions;
 - preserve old decisions instead of silently rewriting them;
 - mark changed decisions with `superseded`, `Superseded by`, and `Reason`.
+- create new machine export files for the update instead of overwriting prior export files;
+- append a new registry event for the addendum/update.
 
 Decision status values:
 
@@ -170,6 +355,42 @@ Every protocol pack should answer:
 - Which runtime/code changes must not be done from the side thread?
 - What verification is still missing?
 
+## Acceptance Criteria
+
+For Markdown-only protocol:
+
+- Markdown protocol pack exists.
+- `00_INDEX.md` lists created files and limitations.
+- Full protocol is not dumped into chat.
+- Main thread can continue from `02_HANDOFF_FOR_MAIN_THREAD.md` without reading the full side conversation.
+
+For Sidechat Export:
+
+- Markdown protocol pack exists.
+- `manifest.json` exists.
+- `normalized.json` exists and is valid JSON.
+- `timeline.jsonl` exists and every non-empty line is valid JSON.
+- `normalized.json` contains `schema`, `protocol_id`, `topic`, `project`, `workspace`, `human_protocol_folder`, `machine_export_folder`, and `limitations`.
+- `timeline.jsonl` events contain `type`.
+- Registry JSONL has an entry for the protocol or addendum.
+- Protocol and export explicitly say they are not an official importable Codex thread.
+
+For Obsidian Index:
+
+- Obsidian note exists only if enabled/configured or explicitly requested.
+- Obsidian note links to the Markdown protocol folder and machine export folder.
+- Obsidian note is compact and does not duplicate bulky JSON/JSONL.
+
+## Validation
+
+When a machine export is created, validate JSON and JSONL before claiming completion. Use `scripts/validate_sidechat_export.py` if available.
+
+Validation command:
+
+```powershell
+py -3 scripts\validate_sidechat_export.py --export-dir "<machine_export_folder>"
+```
+
 ## Chat Response
 
 After creating or updating files, respond briefly:
@@ -187,7 +408,6 @@ After creating or updating files, respond briefly:
 ```
 
 For clickable paths in Codex UI, prefer giving the folder as plain text plus filenames separately; long Cyrillic Windows paths render poorly as cards.
-
 
 
 

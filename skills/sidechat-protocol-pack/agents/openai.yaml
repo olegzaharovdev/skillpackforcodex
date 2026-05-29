@@ -1,4 +1,4 @@
 interface:
   display_name: "Sidechat Protocol Pack"
-  short_description: "Создает файловый протокол и handoff для боковых чатов."
+  short_description: "Создает протокол, handoff и JSON/JSONL export для боковых чатов."
   default_prompt: "Создай или обнови Sidechat Protocol Pack для этой беседы."

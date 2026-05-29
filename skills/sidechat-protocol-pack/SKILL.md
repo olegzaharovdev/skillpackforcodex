@@ -1,6 +1,6 @@
 ---
 name: sidechat-protocol-pack
-description: Create or update a durable Russian-language Sidechat Protocol Pack when the user asks to close, preserve, protocol, hand off, recover, summarize, or continue a side conversation. Trigger on short Russian commands like "Сделай протокол", "запротоколлируй", or "протокол". Use for side chats, interrupted chats, architectural decisions, bot/runtime bug discussions, and requests to save a transcript, protocol, handoff, question map, decisions, tasks, addendum, or reusable continuation prompt without dumping the full protocol into chat.
+description: Create or update a durable Russian-language Sidechat Protocol Pack when the user asks to close, preserve, protocol, hand off, recover, summarize, or continue a side conversation. Also use this skill when the user asks to save a protocol into an explicit folder path, for example "сохрани протокол в D:\\..." or "протокол D:\\...". Trigger on short Russian commands like "Сделай протокол", "запротоколлируй", or "протокол". Use for side chats, interrupted chats, architectural decisions, bot/runtime bug discussions, and requests to save a transcript, protocol, handoff, question map, decisions, tasks, addendum, or reusable continuation prompt without dumping the full protocol into chat.
 metadata:
   short-description: File-backed sidechat protocol and handoff
 ---
@@ -11,7 +11,7 @@ metadata:
 
 Use this skill to preserve a side conversation as files, not as a long chat response. The default output language is Russian.
 
-Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
+Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
 
 ## Core Rule
 
@@ -19,6 +19,32 @@ Do not print the full protocol into chat. Create or update files, then answer on
 
 If file creation is not possible, say briefly that a proper protocol requires files and ask for permission or a different target folder.
 
+## Explicit Target Folder
+
+If the user provides a folder path in the protocol request, treat it as an explicit one-run target. This is useful for intermediate research, Kimi/Claude/Codex result folders, customer analysis folders, or any case where the protocol belongs next to the work result rather than in the general project protocol archive.
+
+Recognize patterns like:
+
+```text
+сохрани протокол в D:\GWD\Разработка\ИИ\AiDrevo\Исследования\20260529 Анализ что уже можно продавать\Результаты\Kimi
+сохрани протокол в папку D:\path\to\folder
+протокол D:\path\to\folder
+Сделай протокол в D:\path\to\folder
+```
+
+Target-folder rule:
+
+1. Do not overwrite unrelated files in the target folder.
+2. By default, create a protocol-pack subfolder inside the provided target folder:
+
+```text
+<explicit_target_folder>/YYYY-MM-DD_<short_slug>/
+```
+
+3. If the user explicitly says `прямо в эту папку` or the target folder already appears to be a final protocol-pack folder, write the protocol files directly there.
+4. An explicit target folder applies only to the current protocol run. Do not save it into `.codex/sidechat-protocol-pack.json` unless the user asks to make it the project default.
+5. If the folder does not exist, create it after confirming it is inside the intended workspace or an explicitly provided absolute path.
+6. In the chat response, show the final folder actually used, not just the parent target.
 ## Folder Layout
 
 Use per-project storage. Never send protocols from an unrelated workspace into an AiDrevo/Viktor2.0 folder unless the current project explicitly configured that path.
@@ -161,5 +187,7 @@ After creating or updating files, respond briefly:
 ```
 
 For clickable paths in Codex UI, prefer giving the folder as plain text plus filenames separately; long Cyrillic Windows paths render poorly as cards.
+
+
 
 

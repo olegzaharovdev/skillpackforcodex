@@ -11,7 +11,7 @@ metadata:
 
 Use this skill to preserve a side conversation as files, not as a long chat response. The default output language is Russian.
 
-Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
+Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `обнови протоколы`, `освежи контекст по протоколам`, `собери решения из протоколов`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
 
 ## Core Rule
 
@@ -63,7 +63,9 @@ Config shape:
   "machine_export_enabled": true,
   "machine_export_root": "D:\\\\.CodexProtocolsDontMove",
   "obsidian_enabled": false,
-  "obsidian_dialog_root": ""
+  "obsidian_dialog_root": "",
+  "obsidian_project_name": "",
+  "obsidian_note_visibility": "show_path"
 }
 ```
 
@@ -79,6 +81,7 @@ Resolution order:
 ```
 
 5. If the user chooses a custom project path, save it to `.codex/sidechat-protocol-pack.json` so the next run in this project does not ask again.
+6. Treat Obsidian settings as per-project settings, not global personal settings. A user can have several Obsidian vaults, so never reuse a vault from another project unless the current project config explicitly points to it.
 
 Examples of valid `protocol_root` values:
 
@@ -126,6 +129,14 @@ Recommended default:
 D:\.CodexProtocolsDontMove
 ```
 
+This root is intentionally outside both Codex system folders and project folders:
+
+- do not put long-lived protocol registry data under Codex app/system directories because app updates can change internal layouts;
+- do not put all JSON/JSONL exports inside every project by default because these files are mainly for automation, not daily reading;
+- keep human Markdown close to the project or explicit target folder, and keep machine-readable exports in one durable registry root.
+
+The folder name `D:\.CodexProtocolsDontMove` is the current recommended default. It is intentionally explicit and slightly inconvenient-looking so the user understands it is a durable system archive, not a normal working folder.
+
 Machine export files:
 
 ```text
@@ -146,6 +157,8 @@ Do not store machine JSON/JSONL inside Obsidian by default. Obsidian should rece
 ### NORMALIZED JSON
 
 `normalized.json` is a structured snapshot for Project OS, the main thread, another model, future Event Ledger/PostgreSQL/RAG, and audits.
+
+It also enables the main thread to refresh itself after several side chats were run in parallel. A future/current command such as `обнови протоколы` or `прочитай протоколы` can read the project registry plus normalized exports, then restore important decisions, changed assumptions, tasks, risks, and source links without asking the user to paste every side chat manually.
 
 Required top-level fields:
 
@@ -176,6 +189,8 @@ Required top-level fields:
 ### TIMELINE JSONL
 
 `timeline.jsonl` is an append-friendly event stream. One line is one valid JSON object.
+
+Use JSONL for meaningful events only. Do not write routine agent status chatter such as `accepted`, `started`, `sync started`, tool progress, or other technical noise. Save only useful conversation events, decisions, tasks, created/updated files, links, errors, constraints, limitations, and protocol update events.
 
 Recommended event types:
 
@@ -234,6 +249,10 @@ Every Markdown protocol, normalized JSON, manifest, and relevant registry entry 
 
 Obsidian index is optional and per-project. Ask the user once whether they use Obsidian and want a dialogue/protocol index note there. Save the answer in `.codex/sidechat-protocol-pack.json`.
 
+Important: Obsidian vault selection is per-project. The same user can have several vaults: one large personal vault, one vault per project, and one temporary research vault. The skill must not reuse a vault from another project unless the current project config explicitly points to it.
+
+If `obsidian_enabled` is true but `obsidian_dialog_root` is empty or ambiguous, do not write the note. Ask the user to choose the project-specific vault/folder and then save it in the current project's `.codex/sidechat-protocol-pack.json`.
+
 Use Obsidian only for compact human navigation:
 
 - topic;
@@ -247,6 +266,14 @@ Use Obsidian only for compact human navigation:
 - what to read next.
 
 Do not put full raw transcript or bulky JSON/JSONL into Obsidian by default.
+
+Before creating or updating an Obsidian note, include the exact destination in the final chat response:
+
+```text
+Obsidian index note: <full path to note>
+```
+
+If the note was not created because Obsidian is disabled or not configured, say this briefly and do not treat it as an error.
 
 Recommended Obsidian note path:
 
@@ -296,6 +323,9 @@ Body sections:
 8. Update `00_INDEX.md` with status, language, version, created files, export files, Obsidian note if any, and what to pass to the main thread.
 9. If Sidechat Export applies, create `manifest.json`, `normalized.json`, and `timeline.jsonl` under `machine_export_root`, then append a row to `sidechat_protocol_registry.jsonl`.
 10. If Obsidian index is enabled, create or update the compact Obsidian note.
+11. Keep the final chat response compact: say that the protocol was created/updated, show the human protocol folder, machine export folder if created, and Obsidian note path if created.
+
+Do not paste long technical logs into chat. Do not write routine chat-status messages such as `started`, `accepted`, `sync started`, or tool progress into Markdown, JSON, or JSONL. The protocol should preserve the work, not the agent's mechanical status stream.
 
 ## Repeat Protocol Workflow
 
@@ -328,6 +358,36 @@ accepted
 superseded
 rejected
 ```
+
+## Main Thread Protocol Refresh Workflow
+
+Use this mode when the user in the main thread asks:
+
+- `обнови протоколы`
+- `прочитай протоколы`
+- `освежи контекст по протоколам`
+- `собери решения из протоколов`
+- similar wording that asks to refresh project context from sidechat protocols.
+
+Purpose:
+
+- let the main thread catch up after several side chats were run in parallel;
+- recover decisions from side chats that may already be closed or deleted;
+- avoid asking the user to manually paste every sidechat handoff;
+- rebuild the main thread's current understanding from Markdown protocol packs plus JSON/JSONL registry data.
+
+Procedure:
+
+1. Resolve current project config from `.codex/sidechat-protocol-pack.json`.
+2. Identify the human protocol root for this project and the machine export root.
+3. Read the registry/index if available.
+4. Filter protocol entries for the current project/workspace first.
+5. Summarize only relevant recent or requested protocols; do not dump full JSON/JSONL into chat.
+6. Extract accepted decisions, changed decisions, open questions, tasks, risks, created files, and recommended next actions.
+7. If sidechat protocols conflict, report a decision diff instead of merging silently.
+8. Return a compact main-thread refresh summary and include paths to the source protocol folders.
+
+This mode should not create a new protocol unless the user also asks to save the refresh result.
 
 ## Source Integrity
 
@@ -393,7 +453,7 @@ py -3 scripts\validate_sidechat_export.py --export-dir "<machine_export_folder>"
 
 ## Chat Response
 
-After creating or updating files, respond briefly:
+After creating, updating, or refreshing protocols, respond briefly:
 
 ```text
 Пакет протокола создан/обновлен:
@@ -405,6 +465,12 @@ After creating or updating files, respond briefly:
 00_INDEX.md
 02_HANDOFF_FOR_MAIN_THREAD.md
 05_DECISIONS_AND_TASKS.md
+
+Machine export:
+<folder path or "не создавался">
+
+Obsidian index note:
+<note path or "не настроен">
 ```
 
 For clickable paths in Codex UI, prefer giving the folder as plain text plus filenames separately; long Cyrillic Windows paths render poorly as cards.

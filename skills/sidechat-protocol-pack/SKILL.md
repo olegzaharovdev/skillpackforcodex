@@ -411,3 +411,32 @@ For clickable paths in Codex UI, prefer giving the folder as plain text plus fil
 
 
 
+## Codex Sidechat Tree Model
+
+Use this mental model when explaining or applying the skill.
+
+A long Codex project is the tree trunk. The main thread is the trunk line: it keeps stable direction, project memory, root decisions, long-term context, and the current operating plan. Side chats are branches and leaves: short focused sprints that grow from the trunk to solve one question without overloading the main thread.
+
+Recommended interpretation:
+
+- Trunk: the main Codex thread, project OS, WIP files, stable rules, active roadmap, shared context.
+- Branch: a side chat opened from the main thread for one bounded topic, research question, bug, design decision, or experiment.
+- Leaf: the short sprint result inside the side chat: conclusion, decision, prompt, patch idea, risk, task, or reusable artifact.
+- Fallen leaf risk: if the side chat is closed without protocol, the leaf dries out and the project loses the decision trail.
+- Protocol pack: the process of pressing the leaf into the project herbarium, so it becomes durable and searchable.
+- Markdown layer: human-readable pressed leaf, suitable for the main thread and project notes.
+- JSON/JSONL layer: machine-readable veins of the leaf, suitable for registry, Event Ledger, RAG, PostgreSQL, and later automation.
+- Obsidian note: the catalog card that places the leaf into the knowledge graph and topic map.
+
+Behavior rules:
+
+- Do not turn every side chat into a huge document by default. Preserve the useful leaf: context, reasoning, decisions, tasks, links, files, and limitations.
+- If the side chat changed an earlier decision, write this explicitly as a decision diff instead of silently replacing the old protocol.
+- If the side chat only adds new information, create an addendum/delta.
+- If the side chat produced a reusable instruction for the main thread, create a handoff prompt.
+- If the side chat produced research or article material, preserve it in the human Markdown layer and summarize it in JSON.
+- Treat side chats as sprint leaves, not as a second trunk. The main thread should remain the place where integrated project direction is accepted.
+
+Suggested explanation to the user:
+
+> Think of the main Codex conversation as the project tree trunk. A side chat is a leaf-sprint: it can quickly grow an answer, test an idea, or decide a narrow issue. The protocol pack saves that leaf back into the tree: Markdown for humans and the main branch, JSON/JSONL for automation, and optional Obsidian notes for the knowledge graph.

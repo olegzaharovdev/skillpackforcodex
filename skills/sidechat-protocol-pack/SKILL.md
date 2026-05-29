@@ -21,7 +21,13 @@ If file creation is not possible, say briefly that a proper protocol requires fi
 
 ## Folder Layout
 
-Default project path:
+Default universal path inside the current workspace:
+
+```text
+.protocols/sidechats/YYYY/YYYY-MM/YYYY-MM-DD_<short_slug>/
+```
+
+If the current project has an explicit protocol root, use that project root instead. For example, an AiDrevo/Viktor2.0 installation may use:
 
 ```text
 AiDrevo_OS/01_Protocols/SideChats/YYYY/YYYY-MM/YYYY-MM-DD_<short_slug>/
@@ -125,3 +131,4 @@ After creating or updating files, respond briefly:
 ```
 
 For clickable paths in Codex UI, prefer giving the folder as plain text plus filenames separately; long Cyrillic Windows paths render poorly as cards.
+

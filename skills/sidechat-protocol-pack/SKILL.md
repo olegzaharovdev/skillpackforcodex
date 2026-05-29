@@ -11,7 +11,7 @@ metadata:
 
 Use this skill to preserve a side conversation as files, not as a long chat response. The default output language is Russian.
 
-Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `обнови протоколы`, `освежи контекст по протоколам`, `собери решения из протоколов`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
+Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `обнови протоколы`, `освежи контекст по протоколам`, `собери решения из протоколов`, `настрой протоколы`, `настройки протоколов`, `покажи настройки протоколов`, `измени папку протоколов`, `измени папку export`, `измени vault Obsidian`, `связи протоколов`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
 
 ## Core Rule
 
@@ -388,6 +388,74 @@ Procedure:
 8. Return a compact main-thread refresh summary and include paths to the source protocol folders.
 
 This mode should not create a new protocol unless the user also asks to save the refresh result.
+
+## Settings Management Workflow
+
+Use this mode when the user asks to view, edit, connect, relink, or reset protocol storage settings.
+
+Trigger phrases:
+
+- `настрой протоколы`
+- `настройки протоколов`
+- `покажи настройки протоколов`
+- `измени папку протоколов`
+- `измени папку export`
+- `измени vault Obsidian`
+- `связи протоколов`
+- similar wording about where Markdown, JSON/JSONL, registry, or Obsidian notes are saved.
+
+Purpose:
+
+- make storage routing visible and editable;
+- prevent protocols from being saved into the wrong project or vault;
+- let the user manage current-project paths without editing JSON manually;
+- distinguish current project config from global recommended defaults.
+
+Settings file for the current project:
+
+```text
+.codex/sidechat-protocol-pack.json
+```
+
+Editable settings:
+
+- `protocol_root`: where human Markdown protocol packs are saved for the current project.
+- `machine_export_enabled`: whether JSON/JSONL exports are created.
+- `machine_export_root`: where machine exports and registry are stored.
+- `obsidian_enabled`: whether compact Obsidian index notes are created.
+- `obsidian_dialog_root`: project-specific Obsidian folder for dialogue/protocol index notes.
+- `obsidian_project_name`: project label used in Obsidian frontmatter and summaries.
+- `obsidian_note_visibility`: whether to show the note path in final chat responses.
+
+Recommended response when showing settings:
+
+```text
+Текущие связи протоколов для проекта:
+
+Markdown protocol root:
+<path>
+
+Machine export root:
+<path or disabled>
+
+Obsidian index root:
+<path or disabled/not configured>
+
+Config file:
+.codex/sidechat-protocol-pack.json
+```
+
+When changing settings:
+
+1. If the requested change is explicit, update only that field.
+2. If the user says "настрой протоколы" without concrete paths, show current settings and ask which path to change.
+3. Do not overwrite unrelated config keys.
+4. Do not change another project's config.
+5. If a target folder is outside the current workspace, it is allowed only when the user explicitly provided it or approved it.
+6. For Obsidian, ask for the exact project-specific vault/folder path if not provided.
+7. After saving, show the updated routing summary.
+
+Do not create a protocol during settings management unless the user also asks to protocol the current conversation.
 
 ## Source Integrity
 

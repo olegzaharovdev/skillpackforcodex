@@ -172,13 +172,18 @@ JSONL - это формат, где каждая строка является �
 
 ### 4. Machine Export Registry: общий учет протоколов
 
-Помимо файлов конкретного протокола, skill может вести машинный реестр в отдельной системной папке, например:
+Помимо файлов конкретного протокола, skill может вести машинный реестр в проектной папке, например:
 
 ```text
-D:\.CodexProtocolsDontMove
+./.CodexProtocolsForCurrentProject/sidechats/YYYY/MM/DD/<protocol_id>/
 ```
 
-Идея этой папки: хранить машинные данные отдельно от рабочих документов, чтобы не засорять проектные папки JSON/JSONL-файлами, которые пользователь обычно не читает вручную.
+Идея этой папки: держать машинные JSON/JSONL в одном проектном корне с предсказуемой структурой, пока пользователь решит централизовать их в общем архиве.
+
+Важно:
+
+- проектные значения должны иметь приоритет над глобальными;
+- глобальный путь может существовать как общий fallback, но не должен быть единственным источником хранения.
 
 Реестр помогает:
 
@@ -275,8 +280,8 @@ JSON дает структурный снимок: тема, проект, ре�
 Для машинных JSON/JSONL export удобнее использовать отдельный корень вне проектов:
 
 ```text
-D:\.CodexProtocolsDontMove\exports\YYYY\MM\DD\<protocol_id>\
-D:\.CodexProtocolsDontMove\registry\
+./.CodexProtocolsForCurrentProject/sidechats/YYYY/MM/DD/<protocol_id>/
+./.CodexProtocolsForCurrentProject/registry/
 ```
 
 Для Obsidian лучше создавать короткие индекс-заметки внутри выбранного vault, а не складывать туда все машинные данные.
@@ -328,7 +333,7 @@ Registry = связь между ними.
 Фоновый JSONL, если отдельный watcher/hook будет настроен, рекомендуется хранить здесь:
 
 ```text
-D:\.CodexProtocolsDontMove\events\YYYY\MM\DD\<project_slug>\<session_or_thread_id>.jsonl
+./.CodexProtocolsForCurrentProject/events/YYYY/MM/DD/<project_slug>/<session_or_thread_id>.jsonl
 ```
 
 Так даже если пользователь забыл написать `протокол`, будущий background logger сможет сохранить сырой след беседы. А команда `протокол` позже превратит этот след в чистый Markdown-протокол, normalized JSON, timeline JSONL, registry entry и опциональную Obsidian-заметку.
@@ -378,7 +383,7 @@ Markdown protocol root:
 .protocols/sidechats
 
 Machine export root:
-D:\.CodexProtocolsDontMove
+./.CodexProtocolsForCurrentProject
 
 Obsidian index root:
 D:\Path\To\ProjectVault\Входящее\Диалоги
@@ -405,7 +410,8 @@ Config file:
 {
   "protocol_root": ".protocols/sidechats",
   "machine_export_enabled": true,
-  "machine_export_root": "D:\\.CodexProtocolsDontMove",
+  "machine_json_root": ".CodexProtocolsForCurrentProject",
+  "machine_jsonl_root": ".CodexProtocolsForCurrentProject",
   "obsidian_enabled": false,
   "obsidian_dialog_root": ""
 }
@@ -423,7 +429,8 @@ Config file:
 {
   "protocol_root": "AiDrevo_OS/01_Protocols/SideChats",
   "machine_export_enabled": true,
-  "machine_export_root": "D:\\.CodexProtocolsDontMove",
+  "machine_json_root": ".CodexProtocolsForCurrentProject",
+  "machine_jsonl_root": ".CodexProtocolsForCurrentProject",
   "obsidian_enabled": true,
   "obsidian_dialog_root": "D:\\Path\\To\\ObsidianVault\\Входящее\\Диалоги"
 }
@@ -476,6 +483,7 @@ git add README.md
 git commit -m "Update README"
 git push
 ```
+
 
 
 

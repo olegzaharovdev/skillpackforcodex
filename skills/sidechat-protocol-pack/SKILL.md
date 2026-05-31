@@ -50,9 +50,10 @@ Target-folder rule:
 ```
 
 3. If the user explicitly says `прямо в эту папку` or the target folder already appears to be a final protocol-pack folder, write the protocol files directly there.
-4. An explicit target folder applies only to the current protocol run. Do not save it into `.codex/sidechat-protocol-pack.json` unless the user asks to make it the project default.
-5. If the folder does not exist, create it after confirming it is inside the intended workspace or an explicitly provided absolute path.
-6. In the chat response, show the final folder actually used, not just the parent target.
+4. If the folder is outside writable root or unavailable, suggest fallback in one line, then use project fallback for this run.
+5. An explicit target folder applies only to the current protocol run. Do not save it into `.codex/sidechat-protocol-pack.json` unless the user asks to make it the project default.
+6. If the folder does not exist, create it after confirming it is inside the intended workspace or an explicitly provided absolute path.
+7. In the chat response, show the final folder actually used, not just the parent target.
 ## Folder Layout
 
 Use per-project storage. Never send protocols from an unrelated workspace into an AiDrevo/Viktor2.0 folder unless the current project explicitly configured that path.
@@ -69,7 +70,8 @@ Config shape:
 {
   "protocol_root": ".protocols/sidechats",
   "machine_export_enabled": true,
-  "machine_export_root": "D:\\\\.CodexProtocolsDontMove",
+  "machine_json_root": ".CodexProtocolsForCurrentProject",
+  "machine_jsonl_root": ".CodexProtocolsForCurrentProject",
   "obsidian_enabled": false,
   "obsidian_dialog_root": "",
   "obsidian_project_name": "",
@@ -84,15 +86,16 @@ Resolution order:
 
 1. If the user gives a target folder in the request, use it for this run and offer to save it into project config.
 2. If `.codex/sidechat-protocol-pack.json` exists in the current workspace, use `protocol_root` from it.
-3. If no config exists, ask once where to save protocols for this project.
-4. Recommended default for new projects:
+3. For machine roots, if either `machine_json_root` or `machine_jsonl_root` is missing/invalid, use `<project_root>/.CodexProtocolsForCurrentProject`.
+4. If no config exists, ask once where to save protocols for this project.
+5. Recommended default for new projects:
 
 ```text
 .protocols/sidechats/YYYY/YYYY-MM/YYYY-MM-DD_<short_slug>/
 ```
 
-5. If the user chooses a custom project path, save it to `.codex/sidechat-protocol-pack.json` so the next run in this project does not ask again.
-6. Treat Obsidian settings as per-project settings, not global personal settings. A user can have several Obsidian vaults, so never reuse a vault from another project unless the current project config explicitly points to it.
+6. If the user chooses a custom project path, save it to `.codex/sidechat-protocol-pack.json` so the next run in this project does not ask again.
+7. Treat Obsidian settings as per-project settings, not global personal settings. A user can have several Obsidian vaults, so never reuse a vault from another project unless the current project config explicitly points to it.
 
 Examples of valid `protocol_root` values:
 
@@ -128,39 +131,43 @@ Sidechat Export is the machine-readable companion to the Markdown protocol. It i
 
 Use Sidechat Export by default when the side conversation contains decisions, tasks, architecture, bug analysis, research, handoff value, or the user asks to preserve/export/recover the side chat. For tiny operational notes, Markdown-only is acceptable if the user explicitly asks for a lightweight protocol.
 
-Machine export root:
+Machine export roots (project fallback):
 
 ```text
-<machine_export_root>/exports/YYYY/MM/DD/<protocol_id>/
+<machine_json_root>/sidechats/YYYY/MM/DD/<protocol_id>/
+<machine_jsonl_root>/sidechats/YYYY/MM/DD/<protocol_id>/
 ```
 
 Recommended default:
 
 ```text
-D:\.CodexProtocolsDontMove
+.CodexProtocolsForCurrentProject/sidechats/YYYY/MM/DD/<protocol_id>/
 ```
 
-This root is intentionally outside both Codex system folders and project folders:
+Project preference:
 
-- do not put long-lived protocol registry data under Codex app/system directories because app updates can change internal layouts;
-- do not put all JSON/JSONL exports inside every project by default because these files are mainly for automation, not daily reading;
-- keep human Markdown close to the project or explicit target folder, and keep machine-readable exports in one durable registry root.
-
-The folder name `D:\.CodexProtocolsDontMove` is the current recommended default. It is intentionally explicit and slightly inconvenient-looking so the user understands it is a durable system archive, not a normal working folder.
-
-Machine export files:
+- project `machine_json_root` and `machine_jsonl_root` values override any external/global defaults;
+- fallback for missing or invalid configured values:
 
 ```text
-manifest.json
-normalized.json
-timeline.jsonl
+<project_workspace>/.CodexProtocolsForCurrentProject/sidechats/YYYY/MM/DD/<protocol_id>/
+```
+
+If explicit project roots are invalid, use this project fallback and do not fail the protocol write.
+
+Machine export files (per protocol):
+
+```text
+<protocol_id>_manifest.json
+<protocol_id>_NORMALIZED_<YYYY-MM-DD>.json
+<protocol_id>_TIMELINE_<YYYY-MM-DD>.jsonl
 ```
 
 Registry files:
 
 ```text
-<machine_export_root>/registry/sidechat_protocol_registry.jsonl
-<machine_export_root>/registry/sidechat_protocol_registry_index.json
+<machine_json_root>/registry/sidechat_protocol_registry.jsonl
+<machine_jsonl_root>/registry/sidechat_protocol_registry_index.json
 ```
 
 Do not store machine JSON/JSONL inside Obsidian by default. Obsidian should receive a compact index note, not raw automation files.
@@ -227,7 +234,7 @@ Every event should include `type`. Add `created_at`, `summary`, `path`, `url`, `
 
 ### Manifest
 
-`manifest.json` connects the human protocol, machine export, registry entry, project, workspace, source thread, parent thread, and validation result.
+`<protocol_id>_manifest.json` connects the human protocol, machine export, registry entry, project, workspace, source thread, parent thread, and validation result.
 
 Required fields:
 
@@ -332,7 +339,7 @@ Body sections:
 6. Build `05_DECISIONS_AND_TASKS.md`: decisions, statuses, tasks, risks, contradictions, confirmations needed.
 7. Build `06_ARTICLE_MATERIALS.md` only when useful; otherwise keep it compact.
 8. Update `00_INDEX.md` with status, language, version, created files, export files, Obsidian note if any, and what to pass to the main thread.
-9. If Sidechat Export applies, create `manifest.json`, `normalized.json`, and `timeline.jsonl` under `machine_export_root`, then append a row to `sidechat_protocol_registry.jsonl`.
+9. If Sidechat Export applies, create `<protocol_id>_manifest.json`, `<protocol_id>_NORMALIZED_<date>.json`, and `<protocol_id>_TIMELINE_<date>.jsonl` under `machine_json_root`/`machine_jsonl_root`, then append a row to `sidechat_protocol_registry.jsonl`.
 10. If Obsidian index is enabled, create or update the compact Obsidian note.
 11. Keep the final chat response compact: say that the protocol was created/updated, show the human protocol folder, machine export folder if created, and Obsidian note path if created.
 
@@ -500,7 +507,8 @@ Editable settings:
 
 - `protocol_root`: where human Markdown protocol packs are saved for the current project.
 - `machine_export_enabled`: whether JSON/JSONL exports are created.
-- `machine_export_root`: where machine exports and registry are stored.
+- `machine_json_root`: where normalized JSON and manifest for this project are stored.
+- `machine_jsonl_root`: where timeline JSONL for this project are stored.
 - `obsidian_enabled`: whether compact Obsidian index notes are created.
 - `obsidian_dialog_root`: project-specific Obsidian folder for dialogue/protocol index notes.
 - `obsidian_project_name`: project label used in Obsidian frontmatter and summaries.
@@ -574,11 +582,11 @@ For Markdown-only protocol:
 For Sidechat Export:
 
 - Markdown protocol pack exists.
-- `manifest.json` exists.
-- `normalized.json` exists and is valid JSON.
-- `timeline.jsonl` exists and every non-empty line is valid JSON.
-- `normalized.json` contains `schema`, `protocol_id`, `topic`, `project`, `workspace`, `human_protocol_folder`, `machine_export_folder`, and `limitations`.
-- `timeline.jsonl` events contain `type`.
+- `<protocol_id>_manifest.json` exists.
+- `<protocol_id>_NORMALIZED_<date>.json` exists and is valid JSON.
+- `<protocol_id>_TIMELINE_<date>.jsonl` exists and every non-empty line is valid JSON.
+- `<protocol_id>_NORMALIZED_<date>.json` contains `schema`, `protocol_id`, `topic`, `project`, `workspace`, `human_protocol_folder`, `machine_export_folder`, и `limitations`.
+- `<protocol_id>_TIMELINE_<date>.jsonl` events contain `type`.
 - Registry JSONL has an entry for the protocol or addendum.
 - Protocol and export explicitly say they are not an official importable Codex thread.
 
@@ -653,3 +661,5 @@ Behavior rules:
 Suggested explanation to the user:
 
 > Think of the main Codex conversation as the project tree trunk. A side chat is a leaf-sprint: it can quickly grow an answer, test an idea, or decide a narrow issue. The protocol pack saves that leaf back into the tree: Markdown for humans and the main branch, JSON/JSONL for automation, and optional Obsidian notes for the knowledge graph.
+
+

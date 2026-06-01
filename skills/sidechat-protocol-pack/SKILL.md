@@ -11,7 +11,7 @@ metadata:
 
 Use this skill to preserve a side conversation as files, not as a long chat response. The default output language is Russian.
 
-Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `обнови протоколы`, `освежи контекст по протоколам`, `собери решения из протоколов`, `настрой протоколы`, `настройки протоколов`, `покажи настройки протоколов`, `измени папку протоколов`, `измени папку export`, `измени vault Obsidian`, `связи протоколов`, `включи автопротокол`, `выключи автопротокол`, `автопротокол`, `checkpoint протокола`, `фоновый лог протокола`, `черный ящик sidechat`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
+Trigger phrases include: `/protocol`, `Сделай протокол`, `сделай протокол`, `запротоколлируй`, `протокол`, `сохрани протокол`, `сохрани протокол в папку`, `протокол D:\\...`, `протокол <path>`, `экспорт бокового чата`, `sidechat export`, `JSON export`, `JSONL timeline`, `индекс в Obsidian`, `прочитать протоколы`, `обнови протоколы`, `освежи контекст по протоколам`, `собери решения из протоколов`, `почини индекс протокола`, `repair protocol index`, `проверь консистентность протоколов`, `protocol consistency audit`, `настрой протоколы`, `настройки протоколов`, `покажи настройки протоколов`, `измени папку протоколов`, `измени папку export`, `измени vault Obsidian`, `связи протоколов`, `включи автопротокол`, `выключи автопротокол`, `автопротокол`, `checkpoint протокола`, `фоновый лог протокола`, `черный ящик sidechat`, `закрой боковую беседу`, `сохрани переписку`, `handoff`, `raw transcript`, `карта вопросов`, `запиши решения`, `чтобы основная ветка подхватила`, `создай пакет протокола`.
 
 ## Core Rule
 
@@ -362,11 +362,107 @@ Use the next available number for later updates.
 The repeat update should:
 
 - capture only messages and decisions after the previous protocol checkpoint;
-- update `00_INDEX.md` with current version, latest addendum, active decisions, and superseded decisions;
+- update `00_INDEX.md` with current version, `latest_addendum`, active decisions, superseded decisions, created files, and last updated timestamp;
+- update `05_DECISIONS_AND_TASKS.md` when the addendum contains decisions, tasks, changed statuses, risks, or recommendations that the main thread must see;
 - preserve old decisions instead of silently rewriting them;
 - mark changed decisions with `superseded`, `Superseded by`, and `Reason`.
 - create new machine export files for the update instead of overwriting prior export files;
-- append a new registry event for the addendum/update.
+- append a new registry event for the addendum/update, including `latest_addendum_number` and links to the newest addendum/diff/delta files.
+
+### Protocol Consistency Gate
+
+Run this gate before every final response for repeat protocols. This is a hard gate, not a suggestion. If it fails, do not say "протокол обновлен" without either fixing the issue or explicitly reporting what remains inconsistent.
+
+1. Scan the protocol folder for files matching `*_PROTOCOL_ADDENDUM_NNN.md`.
+2. Parse all `NNN` suffixes as numbers and find the maximum addendum number.
+3. For each discovered `NNN`, check the markdown triplet:
+
+```text
+*_PROTOCOL_ADDENDUM_NNN.md
+*_DECISION_DIFF_NNN.md
+*_RAW_TRANSCRIPT_DELTA_NNN.md
+```
+
+If a sibling is missing, warn in the final response and add the gap to the consistency report.
+4. Update `00_INDEX.md` so the status line reflects that maximum number:
+
+```text
+Статус: updated with addendum NNN
+```
+
+5. Add or update machine-readable index metadata near the status metadata:
+
+```text
+latest_addendum: NNN
+last_updated_at: YYYY-MM-DDTHH:mm:ss±HH:MM
+```
+
+Keep the human line too:
+
+```text
+Последнее обновление: YYYY-MM-DDTHH:mm:ss±HH:MM
+```
+
+6. Ensure the created-files section lists all existing addendum/diff/delta files through the maximum discovered addendum number. Do not invent missing files; list the files that exist and surface missing expected siblings as a warning.
+7. Check `05_DECISIONS_AND_TASKS.md`. If the latest addendum contains decisions/tasks/risks but `05_DECISIONS_AND_TASKS.md` does not reflect them, update it before completion or report that the decisions file is stale.
+8. If the status or `latest_addendum` in `00_INDEX.md` is lower than the maximum discovered addendum number, update the index immediately. Do not create a new addendum only to repair the index.
+9. If machine export is enabled, check the latest addendum export files:
+
+```text
+*_ADDENDUM_NNN_manifest.json
+*_ADDENDUM_NNN_NORMALIZED_YYYY-MM-DD.json
+*_ADDENDUM_NNN_TIMELINE_YYYY-MM-DD.jsonl
+```
+
+If markdown reached `NNN` but machine export did not, say: `Markdown есть, machine export отстал: <missing files>`.
+10. Check `sidechat_protocol_registry.jsonl` and `sidechat_protocol_registry_index.json`. Registry JSONL should contain an entry for `ADDENDUM_NNN`. Registry index should contain the addendum entry and an aggregate view for the base protocol:
+
+```json
+{
+  "base_protocol_id": "",
+  "latest_addendum": "NNN",
+  "latest_addendum_number": "NNN",
+  "latest_protocol_id": "...ADDENDUM_NNN",
+  "latest_addendum_files": []
+}
+```
+
+`00_INDEX.md` is a derived index. It must always reflect the maximum `PROTOCOL_ADDENDUM_NNN` found in the protocol folder, even when previous repeat runs forgot to update the status line.
+
+### Repair Protocol Index Mode
+
+Use this mode when the user says:
+
+- `почини индекс протокола`
+- `repair protocol index`
+- similar wording asking to repair protocol metadata without adding new content.
+
+Procedure:
+
+1. Run the Protocol Consistency Gate for the target protocol folder.
+2. Repair `00_INDEX.md`, `05_DECISIONS_AND_TASKS.md` freshness markers, and registry/index snapshots when possible.
+3. Do not create a new `PROTOCOL_ADDENDUM_NNN` unless the user explicitly adds new conversation content that must be preserved.
+4. Return a compact report: repaired, warnings, unresolved inconsistencies.
+
+### Protocol Consistency Audit Mode
+
+Use this mode when the user says:
+
+- `проверь консистентность протоколов`
+- `protocol consistency audit`
+- similar wording asking to audit protocol packs.
+
+For each selected protocol folder, run `scan_protocol_folder(protocol_path)`:
+
+- find max `PROTOCOL_ADDENDUM_NNN`;
+- verify `DECISION_DIFF_NNN` and `RAW_TRANSCRIPT_DELTA_NNN` siblings;
+- verify latest addendum manifest / normalized JSON / timeline JSONL when machine export is enabled;
+- verify `00_INDEX.md` status, `latest_addendum`, created-files list, and timestamps;
+- verify `05_DECISIONS_AND_TASKS.md` reflects the latest decisions/tasks or explicitly says the latest addendum did not add decisions/tasks;
+- verify `sidechat_protocol_registry.jsonl` and `sidechat_protocol_registry_index.json` contain the latest addendum;
+- report missing machine exports, stale registry, stale decisions file, stale index, missing siblings, and skipped numbers.
+
+Do not silently modify every protocol during audit. Repair only when the user asked for repair or when the audit target is the active protocol being finalized.
 
 Decision status values:
 
@@ -576,6 +672,10 @@ For Markdown-only protocol:
 
 - Markdown protocol pack exists.
 - `00_INDEX.md` lists created files and limitations.
+- Repeat protocols pass the Protocol Consistency Gate before the final response.
+- `max(PROTOCOL_ADDENDUM_NNN)` in the folder matches `Статус`, `latest_addendum`, and `last_updated_at` in `00_INDEX.md`.
+- All existing addendum/diff/delta files for the latest addendum are listed in `00_INDEX.md`.
+- `05_DECISIONS_AND_TASKS.md` reflects the latest decisions/tasks, or explicitly states the latest addendum added no decisions/tasks.
 - Full protocol is not dumped into chat.
 - Main thread can continue from `02_HANDOFF_FOR_MAIN_THREAD.md` without reading the full side conversation.
 
@@ -588,6 +688,10 @@ For Sidechat Export:
 - `<protocol_id>_NORMALIZED_<date>.json` contains `schema`, `protocol_id`, `topic`, `project`, `workspace`, `human_protocol_folder`, `machine_export_folder`, и `limitations`.
 - `<protocol_id>_TIMELINE_<date>.jsonl` events contain `type`.
 - Registry JSONL has an entry for the protocol or addendum.
+- Registry JSONL and registry index contain the latest addendum entry when repeat protocol files exist.
+- Registry/index records the current `latest_addendum_number`, `latest_protocol_id`, and `latest_addendum_files` when repeat protocol files exist.
+- `00_INDEX.md` status matches the maximum `PROTOCOL_ADDENDUM_NNN` file in the protocol folder.
+- Machine export for the latest addendum exists, or the final response explicitly states that markdown exists but machine export is stale/missing.
 - Protocol and export explicitly say they are not an official importable Codex thread.
 
 For Obsidian Index:

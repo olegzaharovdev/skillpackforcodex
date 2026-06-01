@@ -93,6 +93,38 @@ Skill не обещает восстановить боковой чат как 
 ```
 
 Первый вызов создает полный protocol pack. Повторный вызов в той же беседе должен создавать addendum/delta и decision diff, не перезаписывая историю молча.
+## Protocol Consistency Gate
+
+`00_INDEX.md` является производным индексом protocol pack. При каждом повторном протоколировании skill должен сверять индекс с реальными файлами в папке протокола и не писать "протокол обновлен", если проверка не пройдена без исправления или явного предупреждения.
+
+Проверяется:
+
+- максимальный номер `*_PROTOCOL_ADDENDUM_NNN.md`;
+- наличие тройки файлов `PROTOCOL_ADDENDUM_NNN`, `DECISION_DIFF_NNN`, `RAW_TRANSCRIPT_DELTA_NNN`;
+- строка `Статус`, поля `latest_addendum`, `last_updated_at` и `Последнее обновление` в `00_INDEX.md`;
+- список созданных файлов в `00_INDEX.md`;
+- актуальность `05_DECISIONS_AND_TASKS.md`, если последний addendum добавил решения, задачи, риски или рекомендации;
+- наличие machine export для последнего addendum: manifest, NORMALIZED JSON, TIMELINE JSONL;
+- наличие записи в `sidechat_protocol_registry.jsonl`;
+- наличие записи и агрегированных полей в `sidechat_protocol_registry_index.json`: `latest_addendum`, `latest_addendum_number`, `latest_protocol_id`, `latest_addendum_files`.
+
+Режим ремонта без нового addendum:
+
+```text
+почини индекс протокола
+repair protocol index
+```
+
+Этот режим сканирует папку, чинит `00_INDEX.md` и registry/index, но не создает новый смысловой addendum, если новых решений не было.
+
+Режим аудита:
+
+```text
+проверь консистентность протоколов
+protocol consistency audit
+```
+
+Этот режим проходит по выбранным protocol pack и сообщает, где отстал индекс, где отсутствует machine export, где registry не содержит последний addendum, где нарушена тройка addendum/diff/delta или пропущены номера.
 
 ## Слои Sidechat Protocol Pack
 
@@ -483,6 +515,8 @@ git add README.md
 git commit -m "Update README"
 git push
 ```
+
+
 
 
 

@@ -369,9 +369,57 @@ The repeat update should:
 - create new machine export files for the update instead of overwriting prior export files;
 - append a new registry event for the addendum/update, including `latest_addendum_number` and links to the newest addendum/diff/delta files.
 
+### Phased Repeat Update Order
+
+Do not update all protocol surfaces in one large fragile patch. Repeat updates must be phased:
+
+1. Create or repair the Markdown triplet first: `PROTOCOL_ADDENDUM_NNN`, `DECISION_DIFF_NNN`, `RAW_TRANSCRIPT_DELTA_NNN`.
+2. Update `05_DECISIONS_AND_TASKS.md` after checking for duplicate addendum sections and duplicate semantic decision/task IDs.
+3. Create machine export for the same `NNN`: manifest, NORMALIZED JSON, TIMELINE JSONL.
+4. Append a new event to `sidechat_protocol_registry.jsonl`. Treat JSONL as append-only; never rely on exact replacement of the last line.
+5. Update `sidechat_protocol_registry_index.json` as the mutable current-state index.
+6. Update `00_INDEX.md` only after the corresponding Markdown triplet and machine export exist, or explicitly state why machine export is disabled/missing.
+7. Run the Protocol Consistency Gate smoke-test before the final response.
+
+If a later phase fails, keep completed append-only/history files, report the failed phase, and do not claim full completion.
+
+### Index Ahead Repair Policy
+
+If `00_INDEX.md` or registry index points to an addendum number that does not exist on disk:
+
+- restore the missing markdown triplet and machine export only when the semantic content is already available and the user intended that addendum;
+- otherwise roll the index/registry current-state fields back to the actual maximum `PROTOCOL_ADDENDUM_NNN` found on disk;
+- report which action was taken.
+
+Never set `latest_addendum` ahead of files that have not been created.
+
+### Decision And Task Deduplication
+
+Before appending to `05_DECISIONS_AND_TASKS.md`:
+
+- check whether a section for `Addendum NNN` already exists;
+- check whether the same decision/task ID already exists;
+- if the semantic meaning already exists under another ID, reference the existing ID or update its status instead of creating a parallel ID;
+- if a new ID is required, use a stable semantic ID based on the durable concept, not on the current wording;
+- if uncertain, add a note under `Требует подтверждения` instead of duplicating a decision.
+
+This prevents `PROTOCOL-DECISIONS-DUPLICATE-*` and `PROTOCOL-SEMANTIC-ID-DRIFT-*` failures.
+
 ### Protocol Consistency Gate
 
 Run this gate before every final response for repeat protocols. This is a hard gate, not a suggestion. If it fails, do not say "протокол обновлен" without either fixing the issue or explicitly reporting what remains inconsistent.
+
+Prefer the bundled script when available:
+
+```powershell
+py -3 scripts\audit_protocol_consistency.py --protocol-dir "<protocol_folder>" --project-root "<project_root>"
+```
+
+For index-only metadata repair without creating a new semantic addendum:
+
+```powershell
+py -3 scripts\audit_protocol_consistency.py --protocol-dir "<protocol_folder>" --project-root "<project_root>" --repair-index
+```
 
 1. Scan the protocol folder for files matching `*_PROTOCOL_ADDENDUM_NNN.md`.
 2. Parse all `NNN` suffixes as numbers and find the maximum addendum number.

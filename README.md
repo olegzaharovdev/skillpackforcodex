@@ -108,6 +108,30 @@ Skill не обещает восстановить боковой чат как 
 - наличие записи в `sidechat_protocol_registry.jsonl`;
 - наличие записи и агрегированных полей в `sidechat_protocol_registry_index.json`: `latest_addendum`, `latest_addendum_number`, `latest_protocol_id`, `latest_addendum_files`.
 
+Повторное обновление должно идти фазами:
+
+- сначала Markdown-тройка;
+- затем `05_DECISIONS_AND_TASKS.md` с проверкой дублей и semantic ID drift;
+- затем machine export;
+- затем append-only запись в registry JSONL;
+- затем mutable registry index;
+- затем `00_INDEX.md`;
+- затем smoke-test.
+
+Нельзя выставлять `latest_addendum` вперед фактически созданных файлов. Если индекс уже указывает на несуществующий addendum, skill должен либо восстановить недостающую тройку/export по уже зафиксированному смыслу, либо откатить индекс к фактическому максимуму на диске.
+
+Для стабильной проверки в skill есть скрипт:
+
+```powershell
+py -3 scripts\audit_protocol_consistency.py --protocol-dir "<protocol_folder>" --project-root "<project_root>"
+```
+
+Для ремонта только metadata-строк `00_INDEX.md` без нового смыслового addendum:
+
+```powershell
+py -3 scripts\audit_protocol_consistency.py --protocol-dir "<protocol_folder>" --project-root "<project_root>" --repair-index
+```
+
 Режим ремонта без нового addendum:
 
 ```text
